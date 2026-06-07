@@ -16,7 +16,7 @@ def get_ai_response(user_input, chat_history):
 
         chat_completion = client.chat.completions.create(
             messages=messages,
-            model="llama3-8b-8192", # جرب استخدام 8b فهو أخف وأسرع وأكثر استقراراً
+            model="llama-3.3-70b-versatile", # جرب استخدام 8b فهو أخف وأسرع وأكثر استقراراً
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
