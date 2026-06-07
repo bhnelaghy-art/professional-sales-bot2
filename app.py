@@ -3,6 +3,7 @@ from database import append_to_sheet
 from security import clean_phone_number, validate_name
 from notifications import send_telegram_alert
 from marketing import get_marketing_message
+from ai_logic import get_ai_response # استيراد الذكاء الاصطناعي
 
 # إعدادات الواجهة
 st.set_page_config(page_title="منظومة المبيعات المتكاملة", page_icon="🎯")
@@ -13,20 +14,19 @@ if "step" not in st.session_state: st.session_state.step = "name"
 if "temp_name" not in st.session_state: st.session_state.temp_name = ""
 if "messages" not in st.session_state: st.session_state.messages = []
 
-# عرض سجل المحادثة للحفاظ على تجربة مستخدم احترافية
+# عرض سجل المحادثة
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# الترحيب الأولي إذا كانت المحادثة فارغة
+# الترحيب الأولي
 if not st.session_state.messages:
-    welcome_msg = "أهلاً بك في نظامنا! من فضلك، ابدأ بكتابة اسمك الثلاثي."
+    welcome_msg = "أهلاً بك في نظامنا! أنا مساعدك الذكي، من فضلك ابدأ بكتابة اسمك الثلاثي."
     st.session_state.messages.append({"role": "assistant", "content": welcome_msg})
     st.rerun()
 
 # استقبال المدخلات
 if user_input := st.chat_input("تواصل مع فريق المبيعات..."):
-    # عرض مدخلات المستخدم
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
@@ -40,7 +40,8 @@ if user_input := st.chat_input("تواصل مع فريق المبيعات..."):
                 st.session_state.step = "phone"
                 response = f"أهلاً بك {name}، من فضلك أرسل رقم الهاتف (11 رقماً)."
             else:
-                response = "⚠️ الاسم غير صالح، يرجى إدخال اسم ثلاثي صحيح."
+                # إذا لم يكن اسماً، نستخدم الذكاء الاصطناعي للرد
+                response = get_ai_response(user_input, st.session_state.messages[-3:])
 
         # 2. مرحلة طلب الهاتف والحفظ
         elif st.session_state.step == "phone":
@@ -48,18 +49,16 @@ if user_input := st.chat_input("تواصل مع فريق المبيعات..."):
             if phone:
                 with st.spinner("جاري حفظ بياناتك في النظام..."):
                     if append_to_sheet(st.session_state.temp_name, phone):
-                        # تفعيل التنبيه والتسويق
                         send_telegram_alert(st.session_state.temp_name, phone)
                         offer = get_marketing_message(st.session_state.temp_name)
-                        
                         response = f"✅ تم التسجيل بنجاح!\n\n{offer}"
                         st.balloons()
-                        st.session_state.step = "name" # إعادة البدء للعميل التالي
+                        st.session_state.step = "name" 
                     else:
                         response = "❌ خطأ تقني في الاتصال بقاعدة البيانات."
             else:
-                response = "⚠️ رقم غير صحيح، تأكد من إدخال 11 رقماً مصرياً."
+                # إذا لم يكن رقماً، نسأل الذكاء الاصطناعي للرد أو التوضيح
+                response = get_ai_response(user_input, st.session_state.messages[-3:])
         
         st.markdown(response)
         st.session_state.messages.append({"role": "assistant", "content": response})
-        
